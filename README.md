@@ -9,6 +9,10 @@ contain a certain phrase.  While a combination of grep and find can do the
 job, I always get tripped up by the differences in syntax on different 
 systems.
 
+Wu searches files line-by-line, using Python regular expressions.  The fnmatch 
+module is used to select which files to search, throughout the entire folder tree
+under a particular root.
+
     $ wu --help
     usage: wu [-h] [--root ROOT] [--include INCLUDE] [--colour] pattern
 
