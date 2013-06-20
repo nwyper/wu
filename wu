@@ -1,0 +1,107 @@
+#!/usr/bin/python
+# -*- encoding: utf-8 -*-
+
+import argparse
+import sys
+import os
+import wyper
+import re
+import fnmatch
+
+from colorama import init as colorama_init, Fore, Back, Style
+
+def main():
+    # parse the command line
+    args = parse_args()
+
+    if args.colour:
+        colorama_init()
+
+    root = os.path.abspath(args.root)
+    files = (f for f in wyper.walk_files(root) if shell_match(f, args.include))
+
+    pattern = args.pattern
+    regexp = re.compile(pattern)
+    
+    matches = []
+    for filename in files:
+        for f,l,d in search_regexp(filename, regexp, colour=args.colour):
+            if args.colour:
+                print_colour(f,l,d)
+            else:
+                sys.stdout.write('{}:{}:{}\n'.format(f,l,d.rstrip()))
+
+def print_colour(f, l, d):
+    sys.stdout.write(Style.BRIGHT + Fore.MAGENTA)
+    sys.stdout.write(f)
+
+    sys.stdout.write(Style.RESET_ALL + Fore.CYAN)
+    sys.stdout.write(':')
+
+    sys.stdout.write(Style.BRIGHT + Fore.BLUE)
+    sys.stdout.write('{}'.format(l))
+
+    sys.stdout.write(Style.RESET_ALL + Fore.CYAN)
+    sys.stdout.write(':')
+
+    sys.stdout.write(Style.RESET_ALL + Fore.RESET)
+    sys.stdout.write(d.rstrip())
+
+    sys.stdout.write('\n')
+
+
+def search_regexp(filename, regexp, colour=False):
+    with open(filename, 'rt') as data:
+        for lineno, line in enumerate(data):
+            r = regexp.search(line)
+            if r is not None:
+                if colour:
+                    line = (Style.RESET_ALL + line[0:r.start()] +
+                        Fore.RED + Style.BRIGHT + line[r.start(): r.end()] +
+                        Style.RESET_ALL + line[r.end():])
+
+                yield (filename, lineno, line)
+
+
+
+def shell_match(filename, pattern):
+    """
+    >>> shell_match('boo.py', '*.py')
+    True
+    >>> shell_match('boo.py', '*.pl')
+    False
+    >>> shell_match('boo.py', '.py')
+    False
+    """
+    return fnmatch.fnmatch(filename, pattern)
+
+
+def parse_args():
+    """ Command line argument parser """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root', '-r',
+            help='path to root of project',
+            action='store',
+            default='.'
+            )
+    parser.add_argument('--include', '-i',
+            help='shell pattern of files to find (eg "*.py")',
+            action='store',
+            default='*'
+            )
+    parser.add_argument('--colour', '-c', 
+            help='colourize output',
+            action='store_true',
+            )
+    parser.add_argument('pattern',
+            help='regular expression to search for',
+            action='store',
+            default=r'.'
+            )
+    args = parser.parse_args()
+    return args
+    
+
+if __name__ == '__main__':
+    main()
