@@ -6,6 +6,7 @@ import sys
 import os
 import re
 import fnmatch
+from itertools import chain
 
 from colorama import init as colorama_init, Fore, Back, Style
 
@@ -78,6 +79,11 @@ def walk_files(path='.'):
 
     # chain the files in this folder with all of the files in any subfolders
     return chain(files, flatten(walk_files(d) for d in dirs))
+
+
+def flatten(l):
+    """ flatten a nested list """
+    return (val for sublist in l for val in sublist)
 
 
 def parse_args():
