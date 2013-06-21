@@ -6,6 +6,7 @@ import sys
 import os
 import re
 import fnmatch
+import tempfile
 from itertools import chain
 
 from colorama import init as colorama_init, Fore, Back, Style
@@ -21,16 +22,43 @@ def main():
     files = (f for f in walk_files(root)
                 if fnmatch.fnmatch(f, args.include))
 
-    pattern = args.pattern
-    regexp = re.compile(pattern)
+    regexp = re.compile(args.pattern)
     
+    if not args.sub:
+        search(files, regexp, colour=args.colour)
+    else:
+        replace(files, regexp, args.sub, colour=args.colour)
+
+
+def search(files, regexp, colour=False):
     matches = []
     for filename in files:
-        for f,l,d in search_regexp(filename, regexp, colour=args.colour):
-            if args.colour:
+        for f,l,d in search_regexp(filename, regexp, colour=colour):
+            if colour:
                 print_colour(f,l,d)
             else:
                 sys.stdout.write('{}:{}:{}\n'.format(f,l,d.rstrip()))
+
+
+def replace(files, regexp, sub, colour=False):
+    # find files containing regexp
+    matches = set()
+    for filename in files:
+        for f,l,d in search_regexp(filename, regexp):
+            matches.add(f)
+            break
+
+    # for each file containing regexp, apply changes
+    for filename in matches:
+        print filename
+        with tempfile.TemporaryFile() as tmp:
+            with open(filename, 'r') as infile:
+                tmp.write(re.sub(regexp, sub, infile.read()))
+
+            tmp.seek(0)
+
+            with open(filename, 'w') as infile:
+                infile.write(tmp.read())
 
 
 def print_colour(f, l, d):
@@ -53,6 +81,8 @@ def print_colour(f, l, d):
 
 
 def search_regexp(filename, regexp, colour=False):
+    found = False
+
     with open(filename, 'rt') as data:
         for lineno, line in enumerate(data):
             r = regexp.search(line)
@@ -62,7 +92,11 @@ def search_regexp(filename, regexp, colour=False):
                         Fore.RED + Style.BRIGHT + line[r.start(): r.end()] +
                         Style.RESET_ALL + line[r.end():])
 
+                found = True
                 yield (filename, lineno, line)
+
+    if not found:
+        return
 
 
 def walk_files(path='.'):
@@ -108,6 +142,10 @@ def parse_args():
             help='regular expression to search for',
             action='store',
             default=r'.'
+            )
+    parser.add_argument('--sub', '-s',
+            help='replacement expression',
+            action='store'
             )
     args = parser.parse_args()
     return args
