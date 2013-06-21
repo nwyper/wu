@@ -4,7 +4,6 @@
 import argparse
 import sys
 import os
-import wyper
 import re
 import fnmatch
 
@@ -18,7 +17,8 @@ def main():
         colorama_init()
 
     root = os.path.abspath(args.root)
-    files = (f for f in wyper.walk_files(root) if shell_match(f, args.include))
+    files = (f for f in wyper.walk_files(root)
+                if fnmatch.fnmatch(f, args.include))
 
     pattern = args.pattern
     regexp = re.compile(pattern)
@@ -30,6 +30,7 @@ def main():
                 print_colour(f,l,d)
             else:
                 sys.stdout.write('{}:{}:{}\n'.format(f,l,d.rstrip()))
+
 
 def print_colour(f, l, d):
     sys.stdout.write(Style.BRIGHT + Fore.MAGENTA)
@@ -63,17 +64,20 @@ def search_regexp(filename, regexp, colour=False):
                 yield (filename, lineno, line)
 
 
+def walk_files(path='.'):
+    """ returns a list of all files nested under path """
+    def isdir_tuple(d):
+        return ((os.path.isdir(d) and (d, True)) or (d, False))
 
-def shell_match(filename, pattern):
-    """
-    >>> shell_match('boo.py', '*.py')
-    True
-    >>> shell_match('boo.py', '*.pl')
-    False
-    >>> shell_match('boo.py', '.py')
-    False
-    """
-    return fnmatch.fnmatch(filename, pattern)
+    # find all entries, and check whether each is a file or a dir
+    entries = [isdir_tuple(os.path.join(path, p)) for p in os.listdir(path)]
+
+    # split entries into two generators
+    dirs = (d for d, isdir in entries if isdir)
+    files = (f for f, isdir in entries if not isdir)
+
+    # chain the files in this folder with all of the files in any subfolders
+    return chain(files, flatten(walk_files(d) for d in dirs))
 
 
 def parse_args():
