@@ -24,10 +24,12 @@ def main():
 
     regexp = re.compile(args.pattern)
     
-    if not args.sub:
-        search(files, regexp, colour=args.colour)
-    else:
+    if args.delete:
+        replace(files, regexp, None, colour=args.colour)
+    elif args.sub:
         replace(files, regexp, args.sub, colour=args.colour)
+    else:
+        search(files, regexp, colour=args.colour)
 
 
 def search(files, regexp, colour=False):
@@ -49,6 +51,9 @@ def replace(files, regexp, sub, colour=False):
             break
 
     # for each file containing regexp, apply changes
+    if not sub:
+        sub = ''
+
     for filename in matches:
         print filename
         with tempfile.TemporaryFile() as tmp:
@@ -146,6 +151,10 @@ def parse_args():
     parser.add_argument('--sub', '-s',
             help='replacement expression',
             action='store'
+            )
+    parser.add_argument('--delete', '-d',
+            help='delete text',
+            action='store_true'
             )
     args = parser.parse_args()
     return args
